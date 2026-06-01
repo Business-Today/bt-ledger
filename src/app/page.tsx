@@ -2,11 +2,37 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState, useMemo } from "react";
-import { donors, industries, states, roles, type Donor } from "@/data/donors";
+import { useState, useMemo, useEffect } from "react";
+import { supabase } from "../../lib/supabase";
 
 type ViewMode = "grid" | "list";
-type ActiveNav = "Donors" | "Alumni" | "Roster";
+type ActiveNav = "Donors" | "All" | "Roster";
+
+type Donor = {
+  id: number;
+  firstName: string;
+  lastName: string;
+  company: string;
+  alum: string;
+  email: string;
+  phone: string;
+  streetAddress: string;
+  city: string;
+  state: string;
+  zip: string;
+  mostRecentGiftDate: string;
+  totalLifetimeGiving: string;
+  lastGiftAmount: string;
+  response: string;
+  reachOutAgain: string;
+  lastPersonInContact: string;
+  paragraphFromManager: string;
+  industry: string;
+  currentOccupation: string;
+  execOrAssistant: string;
+  initials: string;
+  avatarColor: string;
+};
 
 function Avatar({ donor }: { donor: Donor }) {
   return (
@@ -112,17 +138,61 @@ function ListRow({ donor, onClick }: { donor: Donor; onClick: () => void }) {
 
 export default function Home() {
   const router = useRouter();
+  const [donors, setDonors] = useState<Donor[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
-  const [activeNav, setActiveNav] = useState<ActiveNav>("Donors");
+  const [activeNav, setActiveNav] = useState<ActiveNav>("All");
   const [search, setSearch] = useState("");
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>([]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
-  const [selectedAlumni, setSelectedAlumni] = useState<string[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadDonors = async () => {
+      setIsLoading(true);
+      const { data, error } = await supabase.from("all_interactions").select("*");
+
+      if (!isMounted) return;
+
+      if (error) {
+        setLoadError(`Failed to load donors: ${error.message}`);
+        setDonors([]);
+      } else {
+        setLoadError(null);
+        setDonors((data ?? []) as Donor[]);
+      }
+
+      setIsLoading(false);
+    };
+
+    loadDonors();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const toggleFilter = (list: string[], setter: (v: string[]) => void, val: string) => {
     setter(list.includes(val) ? list.filter((x) => x !== val) : [...list, val]);
   };
+
+  const industries = useMemo(
+    () => Array.from(new Set(donors.map((d) => d.industry).filter((v) => !!v))).sort(),
+    [donors]
+  );
+
+  const states = useMemo(
+    () => Array.from(new Set(donors.map((d) => d.state).filter((v) => !!v))).sort(),
+    [donors]
+  );
+
+  const roles = useMemo(
+    () => Array.from(new Set(donors.map((d) => d.execOrAssistant).filter((v) => !!v))).sort(),
+    [donors]
+  );
 
   const filtered = useMemo(() => {
     return donors.filter((d) => {
@@ -138,10 +208,12 @@ export default function Home() {
       const matchesIndustry = selectedIndustries.length === 0 || selectedIndustries.includes(d.industry);
       const matchesRegion = selectedRegions.length === 0 || selectedRegions.includes(d.state);
       const matchesRole = selectedRoles.length === 0 || selectedRoles.includes(d.execOrAssistant);
+      const givingNumber = parseFloat((d.totalLifetimeGiving || "").replace(/[^0-9.-]+/g, "")) || 0;
+      const matchesActiveNav = activeNav !== "Donors" || givingNumber > 0;
 
-      return matchesSearch && matchesIndustry && matchesRegion && matchesRole;
+      return matchesSearch && matchesIndustry && matchesRegion && matchesRole && matchesActiveNav;
     });
-  }, [search, selectedIndustries, selectedRegions, selectedRoles]);
+  }, [donors, search, selectedIndustries, selectedRegions, selectedRoles, activeNav]);
 
   return (
     <div className="min-h-screen bg-white">
@@ -150,7 +222,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto flex items-center justify-between px-8 py-4">
           <Image src="/logo.png" alt="btledger" width={80} height={24} priority />
           <nav className="flex items-center gap-8">
-          {(["Donors", "Alumni", "Roster"] as ActiveNav[]).map((item) => (
+          {(["All", "Donors", "Roster"] as ActiveNav[]).map((item) => (
             <button
               key={item}
               onClick={() => setActiveNav(item)}
@@ -251,18 +323,17 @@ export default function Home() {
                 selected={selectedRoles}
                 onChange={(v) => toggleFilter(selectedRoles, setSelectedRoles, v)}
               />
-              <FilterSection
-                label="Alumni"
-                options={["Yes", "No"]}
-                selected={selectedAlumni}
-                onChange={(v) => toggleFilter(selectedAlumni, setSelectedAlumni, v)}
-              />
+              {/* Alumni filter removed; use the "All" nav option to show everyone */}
             </div>
           </aside>
 
           {/* Content */}
           <main className="flex-1 min-w-0">
-            {filtered.length === 0 ? (
+            {isLoading ? (
+              <div className="text-center text-gray-400 py-16 text-sm">Loading donors...</div>
+            ) : loadError ? (
+              <div className="text-center text-red-500 py-16 text-sm">{loadError}</div>
+            ) : filtered.length === 0 ? (
               <div className="text-center text-gray-400 py-16 text-sm">
                 No results found.
               </div>

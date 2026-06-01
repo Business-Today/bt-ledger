@@ -4,7 +4,35 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { use } from "react";
-import { donors } from "@/data/donors";
+import { supabase } from "../../../../lib/supabase";
+
+type DonorRow = {
+  id: number;
+  firstName: string;
+  lastName: string;
+  company: string;
+  email: string;
+  phone: string;
+  streetAddress: string;
+  city: string;
+  state: string;
+  zip: string;
+  mostRecentGiftDate: string;
+  totalLifetimeGiving: string;
+  lastGiftAmount: string;
+  response: string;
+  reachOutAgain: string;
+  lastPersonInContact: string;
+  paragraphFromManager: string;
+  industry: string;
+  currentOccupation: string;
+  execOrAssistant: string;
+  initials: string;
+  avatarColor: string;
+};
+
+const { data: donors } = await supabase.from("all_interactions").select("*");
+
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   if (!value || value === "Unknown") return null;
@@ -30,7 +58,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export default function DonorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const donor = donors.find((d) => d.id === Number(id));
+  const donorList = (donors ?? []) as DonorRow[];
+  const donor = donorList.find((d) => d.id === Number(id));
 
   if (!donor) {
     return (
@@ -49,7 +78,7 @@ export default function DonorPage({ params }: { params: Promise<{ id: string }> 
             <Image src="/logo.png" alt="btledger" width={80} height={24} priority />
           </Link>
           <nav className="flex items-center gap-8">
-            {["Donors", "Alumni", "Roster"].map((item) => (
+            {["All", "Donors", "Roster"].map((item) => (
               <Link
                 key={item}
                 href="/"
