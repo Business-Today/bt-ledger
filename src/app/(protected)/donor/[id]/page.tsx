@@ -3,9 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { use, useState } from "react";
-import { supabase } from "../../../../lib/supabase";
+import { use, useEffect, useRef, useState } from "react";
+import { supabase } from "../../../../../lib/supabase";
 import { renderToString } from "react-dom/server";
+
+
 
 type DonorRow = {
   id: number;
@@ -79,6 +81,34 @@ export default function DonorPage({ params }: { params: Promise<{ id: string }> 
   const router = useRouter();
   const donorList = (donors ?? []) as DonorRow[];
   const donor = donorList.find((d) => d.id === Number(id));
+  const [user, setUser] = useState<any>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+  useEffect(() => {
+      async function loadUser() {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+  
+        setUser(user);
+      }
+  
+      loadUser();
+    }, []);
+  
 
   if (!donor) {
     return (
@@ -95,7 +125,16 @@ export default function DonorPage({ params }: { params: Promise<{ id: string }> 
     reachOutAgain: donor.reachOutAgain ?? "",
     lastPersonInContact: donor.lastPersonInContact ?? "",
     paragraphFromManager: donor.paragraphFromManager ?? "",
+    region: donor.region ?? "",
   });
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setDropdownOpen(false);
+
+    router.push("/login");
+  };
 
   const handleSave = async () => {
   const { error } = await supabase
@@ -105,6 +144,7 @@ export default function DonorPage({ params }: { params: Promise<{ id: string }> 
       reachOutAgain: form.reachOutAgain,
       lastPersonInContact: form.lastPersonInContact,
       paragraphFromManager: form.paragraphFromManager,
+      region: form.region,
     })
     .eq("id", donor.id);
 
@@ -139,13 +179,30 @@ export default function DonorPage({ params }: { params: Promise<{ id: string }> 
                 {item}
               </Link>
             ))}
-            <div className="flex items-center gap-2 bg-gray-100 rounded-full px-3 py-1.5 text-sm text-gray-600">
-              <div className="w-5 h-5 rounded-full bg-gray-400 flex items-center justify-center">
-                <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
-                </svg>
-              </div>
-              username
+            <div ref={menuRef} className="relative">
+              <button
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                className="flex items-center gap-2 bg-gray-100 rounded-full px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-200 transition-colors"
+              >
+                <div className="w-5 h-5 rounded-full bg-gray-400 flex items-center justify-center">
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
+                  </svg>
+                </div>
+
+                {user ? user.email.split("@")[0] : "Sign in"}
+              </button>
+
+              {dropdownOpen && (
+                <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                  <button
+                    onClick={signOut}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Sign out
+                  </button>
+                </div>
+              )}
             </div>
           </nav>
         </div>
@@ -164,24 +221,27 @@ export default function DonorPage({ params }: { params: Promise<{ id: string }> 
         </button>
 
         {/* Profile hero */}
-        <div className="flex items-center gap-5 mb-8">
-          <div
-            className="w-20 h-20 rounded-xl flex items-center justify-center text-white font-semibold text-2xl flex-shrink-0"
-            style={{ backgroundColor: donor.avatarColor }}
-          >
-            {donor.initials}
+        <div className="flex items-center justify-between gap-8 mb-8">
+          <div className="flex items-center gap-5">
+            <div
+              className="w-20 h-20 rounded-xl flex items-center justify-center text-white font-semibold text-2xl flex-shrink-0"
+              style={{ backgroundColor: donor.avatarColor }}
+            >
+              {donor.initials}
+            </div>
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-800">
+                {donor.firstName} {donor.lastName}
+              </h1>
+              <p className="text-sm text-gray-500 mt-0.5">{donor.currentOccupation}</p>
+              <p className="text-sm text-gray-400">{donor.company}</p>
+            </div>
           </div>
-          <div className="flex-1">
-            <h1 className="text-2xl font-semibold text-gray-800">
-              {donor.firstName} {donor.lastName}
-            </h1>
-            <p className="text-sm text-gray-500 mt-0.5">{donor.currentOccupation}</p>
-            <p className="text-sm text-gray-400">{donor.company}</p>
-            <div className="mt-3">
+          <div className="flex-shrink-0">
             {!editing ? (
               <button
                 onClick={() => setEditing(true)}
-                className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm"
+                className="px-3 py-2 bg-[#08698F] hover:bg-[#2E5872] text-white rounded-lg text-sm cursor-pointer transition-colors"
               >
                 Edit
               </button>
@@ -189,20 +249,19 @@ export default function DonorPage({ params }: { params: Promise<{ id: string }> 
               <div className="flex gap-2">
                 <button
                   onClick={handleSave}
-                  className="px-3 py-2 bg-green-600 text-white rounded-lg text-sm"
+                  className="px-3 py-2 bg-[#08698F] hover:bg-[#2E5872] text-white rounded-lg text-sm cursor-pointer transition-colors"
                 >
                   Save
                 </button>
 
                 <button
                   onClick={() => setEditing(false)}
-                  className="px-3 py-2 bg-gray-500 text-white rounded-lg text-sm"
+                  className="px-3 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-sm cursor-pointer transition-colors"
                 >
                   Cancel
                 </button>
               </div>
             )}
-          </div>
           </div>
         </div>
 
@@ -240,6 +299,7 @@ export default function DonorPage({ params }: { params: Promise<{ id: string }> 
                   <option value="Yes">Yes</option>
                   <option value="No">No</option>
                   <option value="Complicated">Complicated</option>
+                  <option value="Unknown">Unknown</option>
                 </select>
               ) : (
                 <span className="text-sm text-gray-700">
@@ -247,7 +307,35 @@ export default function DonorPage({ params }: { params: Promise<{ id: string }> 
                 </span>
               )}
             </div>
-            <InfoRow label = "Region" value={formatNull(donor.region)} />
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-gray-400 uppercase tracking-wide">
+                Region
+              </span>
+
+              {editing ? (
+                <select
+                  value={form.region}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      region: e.target.value,
+                    })
+                  }
+                  className="border rounded px-2 py-1"
+                >
+                  <option value="">Select...</option>
+                  <option value="NE">NE</option>
+                  <option value="MW">MW</option>
+                  <option value="West">West</option>
+                  <option value="South">South</option>
+                  <option value="NYC">NYC</option>
+                </select>
+              ) : (
+                <span className="text-sm text-gray-700">
+                  {formatNull(form.region)}
+                </span>
+              )}
+            </div>
           </Section>
 
           {/* Communication */}
