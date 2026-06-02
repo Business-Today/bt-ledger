@@ -121,11 +121,26 @@ export default function DonorPage({ params }: { params: Promise<{ id: string }> 
   const [editing, setEditing] = useState(false);
 
   const [form, setForm] = useState({
+    firstName: donor.firstName ?? "",
+    lastName: donor.lastName ?? "",
+    company: donor.company ?? "",
+    email: donor.email ?? "",
+    phone: donor.phone ?? "",
+    streetAddress: donor.streetAddress ?? "",
+    city: donor.city ?? "",
+    state: donor.state ?? "",
+    zip: donor.zip ?? "",
+    mostRecentGiftDate: donor.mostRecentGiftDate ?? "",
+    totalLifetimeGiving: donor.totalLifetimeGiving ?? "",
+    lastGiftAmount: donor.lastGiftAmount ?? "",
     response: donor.response ?? "",
     reachOutAgain: donor.reachOutAgain ?? "",
     lastPersonInContact: donor.lastPersonInContact ?? "",
     paragraphFromManager: donor.paragraphFromManager ?? "",
     region: donor.region ?? "",
+    industry: donor.industry ?? "",
+    currentOccupation: donor.currentOccupation ?? "",
+    execOrAssistant: donor.execOrAssistant ?? "",
   });
 
   const signOut = async () => {
@@ -140,11 +155,26 @@ export default function DonorPage({ params }: { params: Promise<{ id: string }> 
   const { error } = await supabase
     .from("all_interactions")
     .update({
+      firstName: form.firstName,
+      lastName: form.lastName,
+      company: form.company,
+      email: form.email,
+      phone: form.phone,
+      streetAddress: form.streetAddress,
+      city: form.city,
+      state: form.state,
+      zip: form.zip,
+      mostRecentGiftDate: form.mostRecentGiftDate,
+      totalLifetimeGiving: form.totalLifetimeGiving,
+      lastGiftAmount: form.lastGiftAmount,
       response: form.response,
       reachOutAgain: form.reachOutAgain,
       lastPersonInContact: form.lastPersonInContact,
       paragraphFromManager: form.paragraphFromManager,
       region: form.region,
+      industry: form.industry,
+      currentOccupation: form.currentOccupation,
+      execOrAssistant: form.execOrAssistant,
     })
     .eq("id", donor.id);
 
@@ -268,17 +298,202 @@ export default function DonorPage({ params }: { params: Promise<{ id: string }> 
         <div className="flex flex-col gap-6">
           {/* Contact */}
           <Section title="Contact Info">
-            <InfoRow label="Email" value={formatNull(donor.email)} />
-            <InfoRow label="Phone" value={formatNull(donor.phone)} />
-            <InfoRow label="Street Address" value={formatNull(donor.streetAddress)} />
-            <InfoRow label="City / State / ZIP" value={formatNull(`${donor.city}, ${donor.state} ${donor.zip}`)} />
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-gray-400 uppercase tracking-wide">
+                Email
+              </span>
+
+              {editing ? (
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      email: e.target.value,
+                    })
+                  }
+                  className="border rounded px-2 py-1"
+                  placeholder="Enter email..."
+                />
+              ) : (
+                <span className="text-sm text-gray-700">
+                  {formatNull(donor.email)}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-gray-400 uppercase tracking-wide">
+                Phone
+              </span>
+
+              {editing ? (
+                <input
+                  type="phone"
+                  value={form.phone}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      phone: e.target.value,
+                    })
+                  }
+                  className="border rounded px-2 py-1"
+                  placeholder="Enter phone..."
+                />
+              ) : (
+                <span className="text-sm text-gray-700">
+                  {formatNull(donor.phone)}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-gray-400 uppercase tracking-wide">
+                Street Address
+              </span>
+
+              {editing ? (
+                <input
+                  type="streetAddress"
+                  value={form.streetAddress}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      streetAddress: e.target.value,
+                    })
+                  }
+                  className="border rounded px-2 py-1"
+                  placeholder="Enter street address..."
+                />
+              ) : (
+                <span className="text-sm text-gray-700">
+                  {formatNull(donor.streetAddress)}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-gray-400 uppercase tracking-wide">
+                City / State / ZIP
+              </span>
+
+              {editing ? (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={form.city}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        city: e.target.value,
+                      })
+                    }
+                    className="border rounded px-2 py-1 w-32"
+                    placeholder="City..."
+                  />
+                  <input
+                    type="text"
+                    value={form.state}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        state: e.target.value,
+                      })
+                    }
+                    className="border rounded px-2 py-1 w-16"
+                    placeholder="State"
+                    maxLength={2}
+                  />
+                  <input
+                    type="text"
+                    value={form.zip}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        zip: e.target.value,
+                      })
+                    }
+                    className="border rounded px-2 py-1 w-24"
+                    placeholder="ZIP"
+                  />
+                </div>
+              ) : (
+                <span className="text-sm text-gray-700">
+                  {formatNull(`${donor.city}, ${donor.state} ${donor.zip}`)}
+                </span>
+              )}
+            </div>
           </Section>
 
           {/* Donor */}
           <Section title="Donor Info">
-            <InfoRow label="Most Recent Gift" value={formatNull(donor.mostRecentGiftDate)} />
-            <InfoRow label="Last Gift Amount" value={formatMoney(donor.lastGiftAmount)} />
-            <InfoRow label="Total Lifetime Giving" value={formatMoney(donor.totalLifetimeGiving)} />
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-gray-400 uppercase tracking-wide">
+                Most Recent Gift Date
+              </span>
+
+              {editing ? (
+                <input
+                  type="month"
+                  value={form.mostRecentGiftDate}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      mostRecentGiftDate: e.target.value,
+                    })
+                  }
+                  className="border rounded px-2 py-1"
+                />
+              ) : (
+                <span className="text-sm text-gray-700">
+                  {formatNull(donor.mostRecentGiftDate)}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-gray-400 uppercase tracking-wide">
+                Most Recent Gift Amount
+              </span>
+
+              {editing ? (
+                <input
+                  type="text"
+                  value={form.lastGiftAmount}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      lastGiftAmount: e.target.value,
+                    })
+                  }
+                  className="border rounded px-2 py-1"
+                />
+              ) : (
+                <span className="text-sm text-gray-700">
+                  {formatNull(donor.lastGiftAmount)}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-gray-400 uppercase tracking-wide">
+                Total Lifetime Giving
+              </span>
+
+              {editing ? (
+                <input
+                  type="text"
+                  value={form.totalLifetimeGiving}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      totalLifetimeGiving: e.target.value,
+                    })
+                  }
+                  className="border rounded px-2 py-1"
+                />
+              ) : (
+                <span className="text-sm text-gray-700">
+                  {formatNull(donor.totalLifetimeGiving)}
+                </span>
+              )}
+            </div>
             <div className="flex flex-col gap-1">
               <span className="text-xs text-gray-400 uppercase tracking-wide">
                 Reach Out Again?
@@ -367,7 +582,30 @@ export default function DonorPage({ params }: { params: Promise<{ id: string }> 
                 </span>
               )}
             </div>
-            <InfoRow label="Last Person in Contact" value={formatNull(donor.lastPersonInContact)} />
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-gray-400 uppercase tracking-wide">
+                Last Person in Contact
+              </span>
+
+              {editing ? (
+                <input
+                  type="text"
+                  value={form.lastPersonInContact}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      lastPersonInContact: e.target.value,
+                    })
+                  }
+                  className="border rounded px-2 py-1"
+                  placeholder="Enter last person in contact..."
+                />
+              ) : (
+                <span className="text-sm text-gray-700">
+                  {formatNull(donor.lastPersonInContact)}
+                </span>
+              )}
+            </div>
           </Section>
 
           {/* Notes */}
@@ -402,8 +640,62 @@ export default function DonorPage({ params }: { params: Promise<{ id: string }> 
 
           {/* Network */}
           <Section title="Network">
-            <InfoRow label="Industry" value={formatNull(donor.industry)} />
-            <InfoRow label="Role Type" value={formatNull(donor.execOrAssistant)} />
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-gray-400 uppercase tracking-wide">
+                Industry
+              </span>
+
+              {editing ? (
+                <select
+                  value={form.industry}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      industry: e.target.value,
+                    })
+                  }
+                  className="border rounded px-2 py-1"
+                >
+                  <option value="">Select...</option>
+                  <option value="Tech">Tech</option>
+                  <option value="Healthcare">Healthcare</option>
+                  <option value="Finance/Consulting">Finance/Consulting</option>
+                  <option value="Law">Law</option>
+                  <option value="Consumer/Product Goods">Consumer/Product Goods</option>
+                  <option value="Other">Other</option>
+                </select>
+              ) : (
+                <span className="text-sm text-gray-700">
+                  {formatNull(form.industry)}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-gray-400 uppercase tracking-wide">
+                Role Type
+              </span>
+
+              {editing ? (
+                <select
+                  value={form.execOrAssistant}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      execOrAssistant: e.target.value,
+                    })
+                  }
+                  className="border rounded px-2 py-1"
+                >
+                  <option value="">Select...</option>
+                  <option value="Positive">Exec</option>
+                  <option value="Neutral">Assistant</option>
+                </select>
+              ) : (
+                <span className="text-sm text-gray-700">
+                  {formatNull(form.execOrAssistant)}
+                </span>
+              )}
+            </div>
           </Section>
         </div>
       </div>

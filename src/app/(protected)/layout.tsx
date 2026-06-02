@@ -11,14 +11,26 @@ export default function ProtectedLayout({
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     async function checkAuth() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-
+      // Not logged in
       if (!user) {
+        router.replace("/login");
+        return;
+      }
+
+      // Domain check
+      const email = user.email?.toLowerCase() ?? "";
+
+      const allowed =
+        email.endsWith("@princeton.edu") ||
+        email.endsWith("@businesstoday.org");
+
+      if (!allowed) {
+        await supabase.auth.signOut();
         router.replace("/login");
         return;
       }
@@ -28,6 +40,18 @@ export default function ProtectedLayout({
 
     checkAuth();
   }, [router]);
+
+  useEffect(() => {
+    const {
+        data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (!session) {
+        router.replace("/login");
+        }
+    });
+
+    return () => subscription.unsubscribe();
+    }, [router]);
 
   if (loading) {
     return (
