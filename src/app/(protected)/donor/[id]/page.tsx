@@ -687,8 +687,8 @@ export default function DonorPage({ params }: { params: Promise<{ id: string }> 
                   className="border rounded px-2 py-1"
                 >
                   <option value="">Select...</option>
-                  <option value="Positive">Exec</option>
-                  <option value="Neutral">Assistant</option>
+                  <option value="Exec">Exec</option>
+                  <option value="Assistant">Assistant</option>
                 </select>
               ) : (
                 <span className="text-sm text-gray-700">

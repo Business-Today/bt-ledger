@@ -245,14 +245,17 @@ export default function Home() {
 
   const filtered = useMemo(() => {
     return donors.filter((d) => {
-      const q = search.toLowerCase();
+      const q = search.toLowerCase().trim();
+
+      const safe = (value: unknown) => (value ?? "").toString().toLowerCase();
+
       const matchesSearch =
         !q ||
-        `${d.firstName} ${d.lastName}`.toLowerCase().includes(q) ||
-        d.company.toLowerCase().includes(q) ||
-        d.currentOccupation.toLowerCase().includes(q) ||
-        d.industry.toLowerCase().includes(q) ||
-        d.city.toLowerCase().includes(q);
+        `${safe(d.firstName)} ${safe(d.lastName)}`.includes(q) ||
+        safe(d.company).includes(q) ||
+        safe(d.currentOccupation).includes(q) ||
+        safe(d.industry).includes(q) ||
+        safe(d.city).includes(q);
 
       const matchesIndustry = selectedIndustries.length === 0 || selectedIndustries.includes(d.industry);
       const matchesRegion = selectedRegions.length === 0 || selectedRegions.includes(d.region);
