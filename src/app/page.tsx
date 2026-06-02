@@ -20,6 +20,7 @@ type Donor = {
   city: string;
   state: string;
   zip: string;
+  region: string;
   mostRecentGiftDate: string;
   totalLifetimeGiving: string;
   lastGiftAmount: string;
@@ -147,6 +148,7 @@ export default function Home() {
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>([]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [selectedAlumni, setSelectedAlumni] = useState<string[]>([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -189,6 +191,16 @@ export default function Home() {
     [donors]
   );
 
+  const regions = useMemo(
+    () => Array.from(new Set(donors.map((d) => d.region).filter((v) => !!v))).sort(),
+    [donors]
+  );
+
+  const alumniStatuses = useMemo(
+    () => Array.from(new Set(donors.map((d) => d.alum).filter((v) => !!v))).sort(),
+    [donors]
+  );
+
   const roles = useMemo(
     () => Array.from(new Set(donors.map((d) => d.execOrAssistant).filter((v) => !!v))).sort(),
     [donors]
@@ -206,14 +218,15 @@ export default function Home() {
         d.city.toLowerCase().includes(q);
 
       const matchesIndustry = selectedIndustries.length === 0 || selectedIndustries.includes(d.industry);
-      const matchesRegion = selectedRegions.length === 0 || selectedRegions.includes(d.state);
+      const matchesRegion = selectedRegions.length === 0 || selectedRegions.includes(d.region);
       const matchesRole = selectedRoles.length === 0 || selectedRoles.includes(d.execOrAssistant);
       const givingNumber = parseFloat((d.totalLifetimeGiving || "").replace(/[^0-9.-]+/g, "")) || 0;
+      const matchesAlumni = selectedAlumni.length === 0 || selectedAlumni.includes(d.alum);
       const matchesActiveNav = activeNav !== "Donors" || givingNumber > 0;
 
-      return matchesSearch && matchesIndustry && matchesRegion && matchesRole && matchesActiveNav;
+      return matchesSearch && matchesIndustry && matchesRegion && matchesRole && matchesAlumni && matchesActiveNav;
     });
-  }, [donors, search, selectedIndustries, selectedRegions, selectedRoles, activeNav]);
+  }, [donors, search, selectedIndustries, selectedRegions, selectedRoles, selectedAlumni, activeNav]);
 
   return (
     <div className="min-h-screen bg-white">
@@ -313,7 +326,7 @@ export default function Home() {
               />
               <FilterSection
                 label="Region"
-                options={states}
+                options={regions}
                 selected={selectedRegions}
                 onChange={(v) => toggleFilter(selectedRegions, setSelectedRegions, v)}
               />
@@ -322,6 +335,12 @@ export default function Home() {
                 options={roles}
                 selected={selectedRoles}
                 onChange={(v) => toggleFilter(selectedRoles, setSelectedRoles, v)}
+              />
+              <FilterSection
+                label="Alumni Status"
+                options={alumniStatuses}
+                selected={selectedAlumni}
+                onChange={(v) => toggleFilter(selectedAlumni, setSelectedAlumni, v)}
               />
               {/* Alumni filter removed; use the "All" nav option to show everyone */}
             </div>

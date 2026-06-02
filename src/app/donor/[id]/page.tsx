@@ -3,8 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { use } from "react";
+import { use, useState } from "react";
 import { supabase } from "../../../../lib/supabase";
+import { renderToString } from "react-dom/server";
 
 type DonorRow = {
   id: number;
@@ -17,6 +18,7 @@ type DonorRow = {
   city: string;
   state: string;
   zip: string;
+  region: string;
   mostRecentGiftDate: string;
   totalLifetimeGiving: string;
   lastGiftAmount: string;
@@ -33,9 +35,10 @@ type DonorRow = {
 
 const { data: donors } = await supabase.from("all_interactions").select("*");
 
+ 
 
 function InfoRow({ label, value }: { label: string; value: string }) {
-  if (!value || value === "Unknown") return null;
+  if (!value) return null;
   return (
     <div className="flex flex-col gap-0.5">
       <span className="text-xs text-gray-400 uppercase tracking-wide">{label}</span>
@@ -43,6 +46,22 @@ function InfoRow({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+function formatMoney(value: string) {
+  if (!value || value.trim() === "" || value === "null" || value === "undefined") {
+    return "$0.00";
+  }
+
+  return value;
+}
+
+function formatNull(value: string) {
+  if (!value || value.trim() === "" || value === "null" || value === "undefined") {
+    return "Unknown";
+  }
+return value;
+}
+
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -68,6 +87,37 @@ export default function DonorPage({ params }: { params: Promise<{ id: string }> 
       </div>
     );
   }
+
+  const [editing, setEditing] = useState(false);
+
+  const [form, setForm] = useState({
+    response: donor.response ?? "",
+    reachOutAgain: donor.reachOutAgain ?? "",
+    lastPersonInContact: donor.lastPersonInContact ?? "",
+    paragraphFromManager: donor.paragraphFromManager ?? "",
+  });
+
+  const handleSave = async () => {
+  const { error } = await supabase
+    .from("all_interactions")
+    .update({
+      response: form.response,
+      reachOutAgain: form.reachOutAgain,
+      lastPersonInContact: form.lastPersonInContact,
+      paragraphFromManager: form.paragraphFromManager,
+    })
+    .eq("id", donor.id);
+
+  if (error) {
+    console.error(error);
+    alert(error.message);
+    return;
+  }
+
+  alert("Saved!");
+  setEditing(false);
+  router.refresh();
+};
 
   return (
     <div className="min-h-screen bg-white">
@@ -121,52 +171,151 @@ export default function DonorPage({ params }: { params: Promise<{ id: string }> 
           >
             {donor.initials}
           </div>
-          <div>
+          <div className="flex-1">
             <h1 className="text-2xl font-semibold text-gray-800">
               {donor.firstName} {donor.lastName}
             </h1>
             <p className="text-sm text-gray-500 mt-0.5">{donor.currentOccupation}</p>
             <p className="text-sm text-gray-400">{donor.company}</p>
+            <div className="mt-3">
+            {!editing ? (
+              <button
+                onClick={() => setEditing(true)}
+                className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm"
+              >
+                Edit
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSave}
+                  className="px-3 py-2 bg-green-600 text-white rounded-lg text-sm"
+                >
+                  Save
+                </button>
+
+                <button
+                  onClick={() => setEditing(false)}
+                  className="px-3 py-2 bg-gray-500 text-white rounded-lg text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
           </div>
         </div>
 
         <div className="flex flex-col gap-6">
           {/* Contact */}
           <Section title="Contact Info">
-            <InfoRow label="Email" value={donor.email} />
-            <InfoRow label="Phone" value={donor.phone} />
-            <InfoRow label="Street Address" value={donor.streetAddress} />
-            <InfoRow label="City / State / ZIP" value={`${donor.city}, ${donor.state} ${donor.zip}`} />
+            <InfoRow label="Email" value={formatNull(donor.email)} />
+            <InfoRow label="Phone" value={formatNull(donor.phone)} />
+            <InfoRow label="Street Address" value={formatNull(donor.streetAddress)} />
+            <InfoRow label="City / State / ZIP" value={formatNull(`${donor.city}, ${donor.state} ${donor.zip}`)} />
           </Section>
 
           {/* Donor */}
           <Section title="Donor Info">
-            <InfoRow label="Most Recent Gift" value={donor.mostRecentGiftDate} />
-            <InfoRow label="Last Gift Amount" value={donor.lastGiftAmount} />
-            <InfoRow label="Total Lifetime Giving" value={donor.totalLifetimeGiving} />
-            <InfoRow label="Reach Out Again?" value={donor.reachOutAgain} />
+            <InfoRow label="Most Recent Gift" value={formatNull(donor.mostRecentGiftDate)} />
+            <InfoRow label="Last Gift Amount" value={formatMoney(donor.lastGiftAmount)} />
+            <InfoRow label="Total Lifetime Giving" value={formatMoney(donor.totalLifetimeGiving)} />
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-gray-400 uppercase tracking-wide">
+                Reach Out Again?
+              </span>
+
+              {editing ? (
+                <select
+                  value={form.reachOutAgain}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      reachOutAgain: e.target.value,
+                    })
+                  }
+                  className="border rounded px-2 py-1"
+                >
+                  <option value="">Select...</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                  <option value="Complicated">Complicated</option>
+                </select>
+              ) : (
+                <span className="text-sm text-gray-700">
+                  {formatNull(form.reachOutAgain)}
+                </span>
+              )}
+            </div>
+            <InfoRow label = "Region" value={formatNull(donor.region)} />
           </Section>
 
           {/* Communication */}
           <Section title="Communication">
-            <InfoRow label="Response" value={donor.response} />
-            <InfoRow label="Last Person in Contact" value={donor.lastPersonInContact} />
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-gray-400 uppercase tracking-wide">
+                Response
+              </span>
+
+              {editing ? (
+                <select
+                  value={form.response}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      response: e.target.value,
+                    })
+                  }
+                  className="border rounded px-2 py-1"
+                >
+                  <option value="">Select...</option>
+                  <option value="Positive">Positive</option>
+                  <option value="Neutral">Unknown</option>
+                  <option value="Negative">Negative</option>
+                </select>
+              ) : (
+                <span className="text-sm text-gray-700">
+                  {formatNull(form.response)}
+                </span>
+              )}
+            </div>
+            <InfoRow label="Last Person in Contact" value={formatNull(donor.lastPersonInContact)} />
           </Section>
 
           {/* Notes */}
-          {donor.paragraphFromManager && (
-            <div>
-              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Manager Notes</h2>
-              <div className="bg-gray-100 rounded-xl p-5">
-                <p className="text-sm text-gray-600 leading-relaxed">{donor.paragraphFromManager}</p>
-              </div>
+          <div>
+            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">
+              Manager Notes
+            </h2>
+
+            <div className="bg-gray-100 rounded-xl p-5">
+              {editing ? (
+                <textarea
+                  value={form.paragraphFromManager}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      paragraphFromManager: e.target.value,
+                    })
+                  }
+                  className="w-full border rounded p-2 text-sm"
+                  rows={5}
+                  placeholder="Add notes..."
+                />
+              ) : (
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  {form.paragraphFromManager?.trim()
+                    ? form.paragraphFromManager
+                    : "No notes yet"}
+                </p>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Network */}
           <Section title="Network">
-            <InfoRow label="Industry" value={donor.industry} />
-            <InfoRow label="Role Type" value={donor.execOrAssistant} />
+            <InfoRow label="Industry" value={formatNull(donor.industry)} />
+            <InfoRow label="Role Type" value={formatNull(donor.execOrAssistant)} />
           </Section>
         </div>
       </div>
