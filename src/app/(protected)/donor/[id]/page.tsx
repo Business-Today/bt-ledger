@@ -10,7 +10,7 @@ import { renderToString } from "react-dom/server";
 
 
 type DonorRow = {
-  id: number;
+  id: string;
   firstName: string;
   lastName: string;
   company: string;
@@ -80,7 +80,7 @@ export default function DonorPage({ params }: { params: Promise<{ id: string }> 
   const { id } = use(params);
   const router = useRouter();
   const donorList = (donors ?? []) as DonorRow[];
-  const donor = donorList.find((d) => d.id === Number(id));
+  const donor = donorList.find((d) => d.id === id);  
   const [user, setUser] = useState<any>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 

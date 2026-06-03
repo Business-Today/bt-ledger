@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { supabase } from "../../../lib/supabase";
+import Papa from "papaparse";
 
 
 
@@ -11,7 +12,7 @@ type ViewMode = "grid" | "list";
 type ActiveNav = "Donors" | "All" | "Roster";
 
 type Donor = {
-  id: number;
+  id: string;
   firstName: string;
   lastName: string;
   company: string;
@@ -33,17 +34,17 @@ type Donor = {
   industry: string;
   currentOccupation: string;
   execOrAssistant: string;
-  initials: string;
-  avatarColor: string;
+  avatarColor?: string;
 };
 
 function Avatar({ donor }: { donor: Donor }) {
+    const initials = `${donor.firstName?.[0] ?? ""}${donor.lastName?.[0] ?? ""}`.toUpperCase();
   return (
     <div
       className="w-14 h-14 rounded-lg flex items-center justify-center text-white font-semibold text-base flex-shrink-0"
-      style={{ backgroundColor: donor.avatarColor }}
+      style={{ backgroundColor: donor.avatarColor || "#9ca3af"}}
     >
-      {donor.initials}
+      {initials}
     </div>
   );
 }
@@ -153,6 +154,8 @@ export default function Home() {
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [selectedAlumni, setSelectedAlumni] = useState<string[]>([]);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [importMenuOpen, setImportMenuOpen] = useState(false);
+
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -161,6 +164,87 @@ export default function Home() {
 
     router.push("/login");
   };
+
+
+    const handleCsvUpload = async (
+  event: React.ChangeEvent<HTMLInputElement>
+) => {
+  console.log("CSV handler fired");
+
+  const file = event.target.files?.[0];
+
+  if (!file) {
+    console.log("No file selected");
+    return;
+  }
+
+  console.log("Selected file:", file.name);
+
+  Papa.parse(file, {
+    header: true,
+    skipEmptyLines: true,
+
+    complete: async (results) => {
+      console.log("Parse complete");
+      console.log(results.data);
+      try {
+        const donors = results.data.map((row: any) => ({
+          company: row["Company"] ?? "",
+          lastName: row["Last name"] ?? "",
+          firstName: row["First name"] ?? "",
+          email: row["Email"] ?? "",
+          alum: row["Alumni"] ?? "",
+          region: row["Region"] ?? "",
+          streetAddress: row["Street Address"] ?? "",
+          city: row["City"] ?? "",
+          state: row["State"] ?? "",
+          zip: row["ZIP"] ?? "",
+          phone: row["Phone"] ?? "",
+          mostRecentGiftDate: row["Most Recent Gift Date"] ?? "",
+          totalLifetimeGiving: row["Total Lifetime Giving ($)"] ?? "",
+          lastGiftAmount: row["Last Gift Amount ($)"] ?? "",
+          response: row["Response"] ?? "",
+          reachOutAgain: row["Reach out again?"] ?? "",
+          lastPersonInContact: row["Last Person in Contact"] ?? "",
+          paragraphFromManager: row["Paragraph from Manager"] ?? "",
+          industry: row["Industry"] ?? "",
+          currentOccupation: row["Current Occupation"] ?? "",
+          execOrAssistant: row["Exec or Assistant?"] ?? "",
+        }));
+
+        const { error } = await supabase
+        .from("all_interactions")
+        .upsert(donors, {
+          onConflict: "email",
+          ignoreDuplicates: false,
+        });
+
+        if (error) throw error;
+
+        alert(`Imported ${donors.length} donors successfully!`);
+
+        window.location.reload();
+      } catch (err) {
+        console.error(err);
+        alert("Import failed.");
+      }
+    },
+  });
+};
+  const downloadTemplate = () => {
+    window.open(
+      "https://docs.google.com/spreadsheets/d/1KJ3KUUWb6aHqn611RHSyeS87VBCH4i7Jpi47B_rxknE/edit?usp=sharing",
+      "_blank"
+    );
+  };
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  
 
   useEffect(() => {
     async function loadUser() {
@@ -175,11 +259,19 @@ export default function Home() {
   }, []);
 
   const menuRef = useRef<HTMLDivElement>(null);
+  const importMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
+
+      const target = event.target as Node;
+
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setDropdownOpen(false);
+      }
+
+      if (importMenuRef.current && !importMenuRef.current.contains(target)) {
+        setImportMenuOpen(false);
       }
     }
 
@@ -270,6 +362,13 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".csv"
+        className="hidden"
+        onChange={handleCsvUpload}
+      />
       {/* Header */}
       <header className="border-b border-gray-200">
         <div className="max-w-7xl mx-auto flex items-center justify-between px-8 py-4">
@@ -399,9 +498,42 @@ export default function Home() {
                 selected={selectedAlumni}
                 onChange={(v) => toggleFilter(selectedAlumni, setSelectedAlumni, v)}
               />
-              {/* Alumni filter removed; use the "All" nav option to show everyone */}
+              <div ref={importMenuRef} className="relative flex justify-center mt-3">
+                <button
+                  onClick={() => setImportMenuOpen(!importMenuOpen)}
+                  className="px-4 py-2 bg-[#03688E] hover:bg-[#025674] text-white rounded-lg flex items-center gap-2"
+                >
+                  Import
+                  <span>▼</span>
+                </button>
+
+                {importMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                    <button
+                      onClick={() => {
+                        handleUploadClick();
+                        setImportMenuOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
+                    >
+                      Upload CSV
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        downloadTemplate();
+                        setImportMenuOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
+                    >
+                      Download Template
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </aside>
+          
 
           {/* Content */}
           <main className="flex-1 min-w-0">
